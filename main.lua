@@ -37,10 +37,19 @@ function love.load()
   		world:add(wall, wall.x, wall.y, wall.w, wall.h)
   	end
 
-  	for i=1, 10 do  -- creates tile backgrounds DO NOT COLLIDE
-  		local tile = tile:new(i * 300, 400, 200, 100)
-  		table.insert(tiles, tile)
-  	end
+  	
+
+  	canvas = love.graphics.newCanvas(10000, 10000)
+    -- Rectangle is drawn to the canvas with the alpha blend mode.
+    love.graphics.setCanvas(canvas)
+        canvas:clear()
+        for i=1, 100 do
+	        for j=1, 100 do  -- creates tile backgrounds DO NOT COLLIDE
+	  			local tile = tile:new("stone_tile",j * 101, i * 101)
+	  			tile:draw(dt)
+	  		end
+	  	end
+    love.graphics.setCanvas()
   	
   	-- misc --
   	camera.focus = player
@@ -62,7 +71,7 @@ end
 function love.draw(dt)
 	camera:set()
 	------------
-
+	love.graphics.draw(canvas)
 	drawShadows()
 	if isDebugging then drawAll(walls, dt) end
 	drawAll(entities, dt)
