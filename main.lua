@@ -1,6 +1,6 @@
 function love.load()
 	------------------------------------------------------------------------------------------ requires
-	require 'camera'; require 'AnAL'; require 'player'; require 'knight'; require 'wall'
+	require 'camera'; require 'AnAL'; require 'entity'; require 'wall'; require 'tile'
 	local bump = require 'bump'
 	------------------------------------------------------------------------------------------ love settings
 	love.keyboard.setKeyRepeat( false )
@@ -20,13 +20,13 @@ function love.load()
 
 	entity_index = 0
 		player = entity:new("silver_knight", "friendly", 600, 200, nil, nil, nil, 5) -- creates player
-		player2 = entity:new("silver_knight", "enemy", 400, 100, player.speed*.8, nil, nil, 5) -- creates player
+		player2 = entity:new("silver_knight", "enemy", 100, 100, player.speed*.8, nil, nil, 5) -- creates player
 
   	-- tables --
 	entities = { player, player2 } -- all "living things" that move
 	party = { player } -- current team
   	walls = {} -- boundaries, only for calculation, not actually drawn
-
+  	tiles = {} -- graphics background for map
 
   	world:add(player, player.x, player.y, player.w, player.h) -- adds player to the world
   	world:add(player2, player2.x, player2.y, player2.w, player2.h) -- adds player to the world
@@ -35,6 +35,11 @@ function love.load()
   		local wall = wall:new(i * 300, 400, 200, 100)
   		table.insert(walls, wall)
   		world:add(wall, wall.x, wall.y, wall.w, wall.h)
+  	end
+
+  	for i=1, 10 do  -- creates tile backgrounds DO NOT COLLIDE
+  		local tile = tile:new(i * 300, 400, 200, 100)
+  		table.insert(tiles, tile)
   	end
   	
   	-- misc --
