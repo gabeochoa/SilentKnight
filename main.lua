@@ -1,69 +1,65 @@
 function love.load()
+	------------------------------------------------------------------------------------------ requires
 	require 'camera'; require 'AnAL'; require 'player'; require 'knight'; require 'wall'
 	local bump = require 'bump'
-	------------------------------------------------------------------------------------------ System Setup
+	------------------------------------------------------------------------------------------ love settings
 	love.keyboard.setKeyRepeat( false )
 	love.graphics.setBackgroundColor( 200, 0, 0 )
-
-	player = player:new("silver", 600, 200, nil, nil, nil, 5)
-	entities = { player }
-
-	currentlySelected = player
-
-  -- [ Animations ] --
-  --boom_anim = newAnimation(love.graphics.newImage("textures/anims/explosion.png"), 96, 96, 0.1, 0)
-  --boom_anim:setMode("bounce")
-
-
-  	-- Global stuff (not variables)
- 	shadow_img = love.graphics.newImage("textures/misc/shadow.png"); shadow_img:setFilter("nearest")
-  
-  ------------------------------------------------------------------------------------------ Global Variables
-	start_time = love.timer.getTime() -- Uptime of program
-	isDebugging = true
 	math.randomseed(os.time())
-	windowW = love.graphics.getWidth()
-
-	-- Mouse stuff
+	-- mouse stuff --
 	cursor = love.mouse.newCursor("textures/misc/cursor_sword.png", 0, 0)
 	love.mouse.setCursor(cursor)
+  	------------------------------------------------------------------------------------------ global variables
+	isDebugging = true
+	windowW = love.graphics.getWidth()
+	------------------------------------------------------------------------------------------ global resources
+	shadow_img = love.graphics.newImage("textures/misc/shadow.png"); shadow_img:setFilter("nearest")
+	gravestone_img = love.graphics.newImage("textures/misc/gravestone.png"); gravestone_img:setFilter("nearest")
+	------------------------------------------------------------------------------------------ world creation
+	world = bump.newWorld() -- collision world
 
-  	----- bump world
-  	world = bump.newWorld()
+	entity_index = 0
+		player = entity:new("silver_knight", "friendly", 600, 200, nil, nil, nil, 5) -- creates player
+		player2 = entity:new("silver_knight", "enemy", 400, 100, player.speed*.8, nil, nil, 5) -- creates player
 
-  	party = {player}
-  	walls = {}
+  	-- tables --
+	entities = { player, player2 } -- all "living things" that move
+	party = { player } -- current team
+  	walls = {} -- boundaries, only for calculation, not actually drawn
 
-  	world:add(player, player.x, player.y, player.w, player.h)
-  	for i=1, 10 do
-  		local wall = wall:new(i * 300, 200, 200, 100)
+
+  	world:add(player, player.x, player.y, player.w, player.h) -- adds player to the world
+  	world:add(player2, player2.x, player2.y, player2.w, player2.h) -- adds player to the world
+  	
+  	for i=1, 10 do  -- creates a line of walls and adds them to the world
+  		local wall = wall:new(i * 300, 400, 200, 100)
   		table.insert(walls, wall)
-  		 world:add(wall, wall.x, wall.y, wall.w, wall.h)
+  		world:add(wall, wall.x, wall.y, wall.w, wall.h)
   	end
   	
-
+  	-- misc --
+  	camera.focus = player
 end
 
 
 
 function love.update(dt)
-	--------------------
 
-	updateAll(entities, dt)
-	table.sort(entities, ysort) -- organizes all entities from least to greatest y-value
-
-
-	--------------------
+	updateAll(entities, dt) -- updates the positions of all entities
+	table.sort(entities, ysort) -- preps to draw entities farther back behind those in front
+	for i=1, #entities do
+		entities[i].index = i
+	end
+	-----------------
 	camera:update(dt)
 end
 
 function love.draw(dt)
 	camera:set()
-	--------------------
-
+	------------
 
 	drawShadows()
-	drawAll(walls, dt)
+	if isDebugging then drawAll(walls, dt) end
 	drawAll(entities, dt)
 
 	------------------------------------- GUI
@@ -88,8 +84,8 @@ function love.draw(dt)
 	love.graphics.line(0, love.graphics.getHeight()/2, love.graphics.getWidth(), love.graphics.getHeight()/2 )
   	--if isDebugging then drawMainDebug() end
 
-  	camera:unset()
-  	
+  	--------------
+  	camera:unset()  	
 end
 
 
@@ -113,16 +109,12 @@ end
 
 function love.keyreleased( key, unicode )
 
-	if key == (' ') then
-		local random = math.random(1,3); local color
-
-		if (random == 1) then color = "gold"
-		elseif (random == 2) then color = "silver"
-		else color = "iron" end
-		local knight = knight:new(color, love.mouse.getX(), love.mouse.getY(), math.random(.3 * player.origSpeed, .7 * player.origSpeed), math.random(1, 10), nil, love.graphics.newImage("textures/entities/knight_"..color..".png"):getHeight()/2)
+	if key == (' ') then -- spawns KNIGHT_GOLD ENEMY at mouse location
+		local knight = entity:new("silver_knight", "friendly", love.mouse.getX(), love.mouse.getY(), math.random(.3 * player.origSpeed, .7 * player.origSpeed), math.random(1, 10), nil, love.graphics.newImage("textures/entities/silver_knight.png"):getHeight()/2)
 		table.insert(entities, knight)
 		table.insert(party, knight)
 		world:add(knight, knight.x, knight.y, knight.w, knight.h)
+		entity_index = entity_index + 1
 	end
 end
 

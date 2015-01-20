@@ -8,7 +8,7 @@ o----------========== TO-DO ==========----------o
 		[ ] Pause
 		[ ] Sounds
 		[ ] Animations
-		[ ] Player Health
+		[X] Player Health
 		[ ] Player Damage
 		[ ] Knockback
 	[1.1]

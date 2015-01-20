@@ -37,21 +37,7 @@ function player:init(color, x, y, spd, s, w, h)
 end
 
 function player:draw(dt) ------------------------------------------------ plugs into main.lua
-	if (love.mouse.getX() >= windowW/2) then self.dir = "right" else self.dir = "left" end
-	love.graphics.circle( "line", self.ox, self.oy - self.hh/2, 200, nil )
-
-	if self.status == "walking" then
-		if (self.dir == "right") then self.walk_anim:draw(self.x, self.y - self.h, 0, self.scale, self.scale) else
-			self.walk_anim:draw(self.x, self.y - self.h, 0, -self.scale, self.scale, self.w/self.scale) end
-
-	elseif self.status == "attacking" then
-		if (self.dir == "right") then love.graphics.draw(self.atk_img, self.x, self.y - self.h, 0, self.scale, self.scale) else
-			love.graphics.draw(self.atk_img, self.x, self.y -self.h, 0, -self.scale, self.scale, self.w/self.scale) end
-
-	elseif self.status == "idle" then
-		if (self.dir == "right") then love.graphics.draw(self.img, self.x, self.y - self.h, 0, self.scale, self.scale) else
-			love.graphics.draw(self.img, self.x, self.y - self.h, 0, -self.scale, self.scale, self.w/self.scale) end
-	end
+	
 
 	--[[if (self.ox < love.mouse.getX()) then
 		love.graphics.draw(self.img, self.x, self.y - self.h, 0, self.scale, self.scale)
@@ -68,6 +54,7 @@ function player:update(dt)
 	--animations
 	self.status = "idle"
 	self.walk_anim:update(dt)
+
 
 
 	self.dx, self.dy = 0, 0

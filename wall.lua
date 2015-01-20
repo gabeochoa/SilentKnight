@@ -14,6 +14,8 @@ function wall:init(x, y, w, h)
 
 	self.ox = self.x + self.hw
 	self.oy = self.y + self.hh
+
+	self.id = "wall"
 	
 end
 

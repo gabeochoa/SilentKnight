@@ -2,14 +2,16 @@ require 'class';
 
 entity = class:new()
 
-function entity:init(color, x, y, spd, s, w, h) 
+function entity:init(class, is, x, y, spd, s, w, h) 
 
-	self.img = love.graphics.newImage("textures/entities/knight_"..color..".png")
+	self.index = 0 -- used to remove from table when dead
+
+	self.img = love.graphics.newImage("textures/entities/"..class..".png")
 	self.img:setFilter("nearest")
 	self.x, self.y = x, y
-	self.scale = s or 6
+	self.scale = s or 4
 
-	-- w & h should be custom set only for entitys whose weapons/armor skew their hitboxes 
+	-- w & h should be custom set only for entities whose weapons/armor skew their hitboxes 
 	self.w = ( w or self.img:getWidth() ) *self.scale
 	self.h = ( h or self.img:getHeight() ) *self.scale
 
@@ -17,62 +19,161 @@ function entity:init(color, x, y, spd, s, w, h)
 
 	self.ox, self.oy = self.x + self.hw, self.y + self.hh
 
-	self.speed = spd or 50
+	self.speed = spd or 100
 	self.origSpeed = self.speed
+	self.dx = self.speed
+	self.dy = self.speed
+
+	self.health = 100
+	self.stamina = 100
+	self.damage = 50
+	self.range = 50
+
+	self.class = class or "gold_knight"
+	self.id = "entity"
+
+	self.state = "idle" -- idle OR walking OR attacking OR dead
+	self.dir = "right"
+	self.is = is or "enemy" -- enemy OR neutral OR friendly
+	self.name = "BK Randy"
+
+	self.currentTarget = player
+
+	--imgs
+	self.atk_img = love.graphics.newImage("textures/entities/"..class.."_attack.png"); self.atk_img:setFilter("nearest")
+	-- animations
+	self.walk_img = love.graphics.newImage("textures/anims/"..class.."_walk.png"); self.walk_img:setFilter("nearest")
+	self.walk_anim = newAnimation(self.walk_img, 10, 10, 0.1, 0)
 end
 
 function entity:draw(dt) ------------------------------------------------ plugs into main.lua
-	if (entity.ox < love.mouse.getX()) then
-		love.graphics.draw(self.img, self.x, self.y, 0, -self.scale, self.scale, self.w/self.scale)
-	else
-		love.graphics.draw(self.img, self.x, self.y, 0, self.scale, self.scale)
+	-- sprite direction --
+	if (self ~= player) then
+		if (player.ox < self.ox + 3) then -- faces player
+			self.dir = "left"
+		else
+			self.dir = "right"
+		end -- end faces player
+	elseif (self == player) then
+		if (love.mouse.getX() >= windowW/2) then self.dir = "right" else self.dir = "left" end -- turns player toward mouse
 	end
+
+	-- draws state animation --
+	if self.state == "walking" then
+		if (self.dir == "right") then self.walk_anim:draw(self.x, self.y - self.h, 0, self.scale, self.scale) else
+		self.walk_anim:draw(self.x, self.y - self.h, 0, -self.scale, self.scale, self.w/self.scale) end
+
+	elseif self.state == "attacking" then
+		if (self.dir == "right") then love.graphics.draw(self.atk_img, self.x, self.y - self.h, 0, self.scale, self.scale) else
+		love.graphics.draw(self.atk_img, self.x, self.y -self.h, 0, -self.scale, self.scale, self.w/self.scale) end
+
+	elseif self.state == "idle" then
+		if (self.dir == "right") then love.graphics.draw(self.img, self.x, self.y - self.h, 0, self.scale, self.scale) else
+		love.graphics.draw(self.img, self.x, self.y - self.h, 0, -self.scale, self.scale, self.w/self.scale) end
+	
+	elseif self.state == "dead" then
+		love.graphics.draw(gravestone_img, self.x, self.y -self.h, 0, -self.scale, self.scale, self.w/self.scale) end
+
+	
+
+
   if (isDebugging) then self:drawDebug(dt) end
 end
 
 function entity:update(dt)
-	if (currentlySelected == self) then
-		if love.keyboard.isDown('a') then
-			self.x = self.x - self.speed * dt
-		elseif love.keyboard.isDown('d') then
-			self.x = self.x + self.speed * dt
+	-- animations ------------
+	self.state = "idle"
+	self.walk_anim:update(dt)
+
+	-- death condition --------
+	if (self.health <= 0) then
+		self.state = "dead"
+		self.dx, self.dy = 0, 0
+	end
+
+	-- movement ----------------------------------------------------
+	-- ai --
+	if (self ~= player) and (self.state ~= "dead")then
+		if (self.is == "enemy") then
+			self:followTarget(self.currentTarget)
+		elseif (self.is == "friendly") then
+			self:followTarget(self.currentTarget)
+		else
+			self.dx = 0
+			self.dy = 0
 		end
-		if love.keyboard.isDown('w') then
-			self.y = self.y - self.speed * dt
-		elseif love.keyboard.isDown('s') then
-			self.y = self.y + self.speed * dt
+	-- player controls --
+	elseif (self == player) and (self.state ~= "dead") then
+		self.dx, self.dy = 0, 0
+		if love.keyboard.isDown('a') then self.dx = -self.speed; self.state = "walking" end
+		if love.keyboard.isDown('d') then self.dx = self.speed; self.state = "walking" end
+		if love.keyboard.isDown('w') then self.dy = -self.speed; self.state = "walking" end
+		if love.keyboard.isDown('s') then self.dy = self.speed; self.state = "walking" end
+		-- sprint --
+		if love.keyboard.isDown('lshift') and (self.stamina > 0) then 
+			self.speed = self.origSpeed + 200
+			self.stamina = self.stamina - 20 * love.timer.getDelta()
+		else
+			self.speed = self.origSpeed
+			if (self.stamina < 100) then self.stamina = self.stamina + 10 * love.timer.getDelta() end
 		end
-		if love.keyboard.isDown('lshift') then -- sprint while holding LSHIFT
-			entity.speed = entity.origSpeed + 100
-		end
-		
-	else -- If NOT entity, then move toward entity
-		if self.x ~= destX then
-  		self.x = self.x + (dt*self.speed)*((destX-self.x)/math.abs(destX-self.x))
-  	end
-  	if self.y ~= destY then
-  		self.y = self.y + (dt*self.speed)*((destY-self.y)/math.abs(destY-self.y))
-  	end
-  end
+	end
+
+
+	-- collision detection ------------------------------------------
+	local goalX, goalY = self.x + self.dx * dt, self.y + self.dy * dt
+	local actualX, actualY, cols, len = world:move(self, goalX, goalY)
+	self.x, self.y = actualX, actualY
+
+	for i=1,len do
+		print('collided with ' .. tostring(cols[i].other))
+		local other = cols[i].other
+			if (other.id == "wall") then -- check other.id
+
+	    elseif (other.id == "entity") then
+	    	if (self.is == "enemy") and (other.is ~= "enemy") then
+	    		self.state = "attacking"
+	      	other.health = other.health - self.damage * love.timer.getDelta()
+	    	elseif (self.is == "friendly") and (other.is == "enemy") then
+	    		self.currentTarget = other
+	      	other.health = other.health - 10 * love.timer.getDelta()
+	    	end
+
+	    end -- end check other.id
+	end
 
 	self.ox, self.oy = self.x + self.hw, self.y + self.hh
 	
 end -----------------------------------------------------------------------------------------
 
+
+function entity:followTarget(target)
+	if target.ox < self.ox then self.dx = -self.speed; self.state = "walking" end
+	if self.ox < target.ox then self.dx = self.speed; self.state = "walking" end
+	if self.oy > target.oy then self.dy = -self.speed; self.state = "walking" end
+	if target.oy > self.oy then self.dy = self.speed; self.state = "walking" end
+
+end
+
 function entity:drawDebug(dt)
 	local x, y = self.x + self.w + 5, self.y
 
 	local debugInfo = {
-		"Pos: ("..self.x..","..self.y..")",
+		"Index: "..self.index,
+		--[["Pos: ("..self.x..","..self.y..")",
 		"W, H: "..self.w..", "..self.h,
 		"hW, hH: "..self.hw..", "..self.hh,
-		"oX, oY: "..self.ox..","..self.oy
+		"oX, oY: "..self.ox..","..self.oy,]]
+		"",
+		"HEALTH: "..self.health
 	}
 	for i = 1, #debugInfo do
   	love.graphics.print(debugInfo[i], x, y)
   	y = y + 15
   end
-  -- Hitbox
+  -- hitbox --
   love.graphics.rectangle("line", self.x, self.y, self.w, self.h)
+  -- range radius --
+  love.graphics.circle( "line", self.ox, self.oy - self.hh/2, self.range, nil )
 end
 
