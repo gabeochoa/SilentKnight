@@ -2,7 +2,7 @@ require 'class';
 
 entity = class:new()
 
-function entity:init(class, is, x, y, spd, s, w, h) 
+function entity:init(class, demeanor, x, y, spd, s, w, h) 
 
 	self.index = 0 -- used to remove from table when dead
 
@@ -34,10 +34,11 @@ function entity:init(class, is, x, y, spd, s, w, h)
 
 	self.state = "idle" -- idle OR walking OR attacking OR dead
 	self.dir = "right"
-	self.is = is or "enemy" -- enemy OR neutral OR friendly
+	self.demeanor = demeanor or "enemy" -- enemy OR neutral OR friendly
 	self.name = "BK Randy"
 
 	self.currentTarget = player
+	self.canRun = true -- if stamina is depleted you must wait to get back to 100 to run again
 
 	--imgs
 	self.atk_img = love.graphics.newImage("textures/entities/"..class.."_attack.png"); self.atk_img:setFilter("nearest")
@@ -74,6 +75,12 @@ function entity:draw(dt) ------------------------------------------------ plugs 
 	elseif self.state == "dead" then
 		love.graphics.draw(gravestone_img, self.x, self.y -self.h, 0, -self.scale, self.scale, self.w/self.scale) end
 
+	-- draws HEALTH and STAMINA bars above --
+	love.graphics.setColor(255, 0, 0, hud_opacity)
+	love.graphics.rectangle("fill", self.x, self.y - self.h - 15, self.health * self.w/100, 5)
+	love.graphics.setColor(0, 0, 255, hud_opacity)
+	love.graphics.rectangle("fill", self.x, self.y - self.h - 10, self.stamina * self.w/100, 5)
+	love.graphics.setColor(255, 255, 255, 255)
 	
 
 
@@ -94,10 +101,10 @@ function entity:update(dt)
 	-- movement ----------------------------------------------------
 	-- ai --
 	if (self ~= player) and (self.state ~= "dead")then
-		if (self.is == "enemy") then
+		if (self.demeanor == "enemy") then
 			self:followTarget(self.currentTarget)
-		elseif (self.is == "friendly") then
-			self:followTarget(self.currentTarget)
+		elseif (self.demeanor == "friendly") then
+			self:doFriendlyAI()
 		else
 			self.dx = 0
 			self.dy = 0
@@ -115,9 +122,13 @@ function entity:update(dt)
 			self.stamina = self.stamina - 20 * love.timer.getDelta()
 		else
 			self.speed = self.origSpeed
-			if (self.stamina < 100) then self.stamina = self.stamina + 10 * love.timer.getDelta() end
 		end
 	end
+
+	-- regens --
+	if (self.health < 100) then self.health = self.health + 10 * love.timer.getDelta() end
+	if (self.stamina < 100) then self.stamina = self.stamina + 10 * love.timer.getDelta() end
+	
 
 
 	-- collision detection ------------------------------------------
@@ -131,10 +142,10 @@ function entity:update(dt)
 			if (other.id == "wall") then -- check other.id
 
 	    elseif (other.id == "entity") then
-	    	if (self.is == "enemy") and (other.is ~= "enemy") then
+	    	if (self.demeanor == "enemy") and (other.demeanor ~= "enemy") then
 	    		self.state = "attacking"
 	      	other.health = other.health - self.damage * love.timer.getDelta()
-	    	elseif (self.is == "friendly") and (other.is == "enemy") then
+	    	elseif (self.demeanor == "friendly") and (other.demeanor == "enemy") then
 	    		self.currentTarget = other
 	      	other.health = other.health - 10 * love.timer.getDelta()
 	    	end
@@ -145,6 +156,32 @@ function entity:update(dt)
 	self.ox, self.oy = self.x + self.hw, self.y + self.hh
 	
 end -----------------------------------------------------------------------------------------
+
+
+
+
+function entity:doFriendlyAI()
+	if (distanceBetween(self, self.currentTarget) > 200 ) then
+		if (self.stamina > 0) and (self.canRun) then
+			self.speed = self.origSpeed + 100
+			self.stamina = self.stamina - 40 * love.timer.getDelta()
+		else
+			if (self.stamina < 100) then self.canRun = false else self.canRun = true end
+			self.speed = self.origSpeed
+			self.stamina = self.stamina + 10 * love.timer.getDelta()
+		end
+		self:followTarget(self.currentTarget)
+	else
+		self:stopMoving()
+	end
+end
+
+function entity:stopMoving()
+	self.dx = 0
+	self.dy = 0
+	self.state = "idle"
+end
+
 
 
 function entity:followTarget(target)
@@ -165,7 +202,8 @@ function entity:drawDebug(dt)
 		"hW, hH: "..self.hw..", "..self.hh,
 		"oX, oY: "..self.ox..","..self.oy,]]
 		"",
-		"HEALTH: "..self.health
+		"HEALTH: "..self.health,
+		"SPEED: "..self.speed
 	}
 	for i = 1, #debugInfo do
   	love.graphics.print(debugInfo[i], x, y)
