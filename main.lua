@@ -33,7 +33,7 @@ function love.load()
   	table.insert(walls, wall:new(0, 0, 4000, 200)) -- topmost wall
   	table.insert(walls, wall:new(0, 0, 200, 2000)) -- leftmost wall
   	table.insert(walls, wall:new(0, 1800, 4000, 200)) -- bottom wall
-  	table.insert(walls, wall:new(3800, 0, 200, 2000)) -- rightmost wall
+  	table.insert(walls, wall:new(4000, 0, 200, 2000)) -- rightmost wall
 
  	for i=1, #walls do -- adds all walls to collision world
  		local w = walls[i]
