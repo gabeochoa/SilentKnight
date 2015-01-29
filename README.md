@@ -1,3 +1,5 @@
+![Imgur](http://i.imgur.com/NqVlhfn.png)
+
 # MicroKnight
 A small roguelike written in Lua
 
