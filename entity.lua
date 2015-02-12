@@ -4,12 +4,12 @@ entity = class:new()
 
 function entity:init(class, demeanor, x, y, spd, s, w, h) 
 
-	self.index = 0 -- used to remove from table when dead
+	self.index = 0 -- used to remove from ENTITIES table when dead
 
 	self.img = love.graphics.newImage("textures/entities/"..class..".png")
 	self.img:setFilter("nearest")
 	self.x, self.y = x, y
-	self.scale = s or 4
+	self.scale = s or 2
 
 	-- w & h should be custom set only for entities whose weapons/armor skew their hitboxes 
 	self.w = ( w or self.img:getWidth() ) *self.scale
@@ -32,9 +32,9 @@ function entity:init(class, demeanor, x, y, spd, s, w, h)
 	self.class = class or "gold_knight"
 	self.id = "entity"
 
-	self.state = "idle" -- idle OR walking OR attacking OR dead
+	self.state = "idle" -- idle OR moving OR attacking OR dead
 	self.dir = "right"
-	self.demeanor = demeanor or "enemy" -- enemy OR neutral OR friendly
+	self.demeanor = demeanor or "hostile" -- enemy OR neutral OR friendly
 	self.name = "BK Randy"
 
 	self.currentTarget = player
@@ -44,7 +44,9 @@ function entity:init(class, demeanor, x, y, spd, s, w, h)
 	self.atk_img = love.graphics.newImage("textures/entities/"..class.."_attack.png"); self.atk_img:setFilter("nearest")
 	-- animations
 	self.walk_img = love.graphics.newImage("textures/anims/"..class.."_walk.png"); self.walk_img:setFilter("nearest")
-	self.walk_anim = newAnimation(self.walk_img, 10, 10, 0.1, 0)
+	self.walk_anim = newAnimation(self.walk_img, 10, 10, 0.125, 0)
+	self.attack_img = love.graphics.newImage("textures/anims/"..class.."_attack.png"); self.attack_img:setFilter("nearest")
+	self.attack_anim = newAnimation(self.attack_img, 16, 10, .125, 0)
 end
 
 function entity:draw(dt) ------------------------------------------------ plugs into main.lua
@@ -56,17 +58,19 @@ function entity:draw(dt) ------------------------------------------------ plugs 
 			self.dir = "right"
 		end -- end faces player
 	elseif (self == player) then
-		if (love.mouse.getX() >= windowW/2) then self.dir = "right" else self.dir = "left" end -- turns player toward mouse
+		if (love.mouse.getX() >= self.ox) then self.dir = "right" else self.dir = "left" end -- turns player toward mouse
 	end
 
 	-- draws state animation --
-	if self.state == "walking" then
+	if self.state == "moving" then
 		if (self.dir == "right") then self.walk_anim:draw(self.x, self.y - self.h, 0, self.scale, self.scale) else
 		self.walk_anim:draw(self.x, self.y - self.h, 0, -self.scale, self.scale, self.w/self.scale) end
 
 	elseif self.state == "attacking" then
-		if (self.dir == "right") then love.graphics.draw(self.atk_img, self.x, self.y - self.h, 0, self.scale, self.scale) else
-		love.graphics.draw(self.atk_img, self.x, self.y -self.h, 0, -self.scale, self.scale, self.w/self.scale) end
+		if (self.dir == "right") then self.attack_anim:draw(self.x, self.y - self.h, 0, self.scale, self.scale) else
+		self.attack_anim:draw(self.x, self.y - self.h, 0, -self.scale, self.scale, self.w/self.scale) end
+		--[[love.graphics.draw(self.atk_img, self.x, self.y - self.h, 0, self.scale, self.scale) else
+		love.graphics.draw(self.atk_img, self.x, self.y -self.h, 0, -self.scale, self.scale, self.w/self.scale) end]]
 
 	elseif self.state == "idle" then
 		if (self.dir == "right") then love.graphics.draw(self.img, self.x, self.y - self.h, 0, self.scale, self.scale) else
@@ -75,13 +79,14 @@ function entity:draw(dt) ------------------------------------------------ plugs 
 	elseif self.state == "dead" then
 		love.graphics.draw(gravestone_img, self.x, self.y -self.h, 0, -self.scale, self.scale, self.w/self.scale) end
 
+	if (self.state ~= "dead") then
 	-- draws HEALTH and STAMINA bars above --
 	love.graphics.setColor(255, 0, 0, hud_opacity)
 	love.graphics.rectangle("fill", self.x, self.y - self.h - 15, self.health * self.w/100, 5)
-	love.graphics.setColor(0, 0, 255, hud_opacity)
+	love.graphics.setColor(98,166,231, hud_opacity)
 	love.graphics.rectangle("fill", self.x, self.y - self.h - 10, self.stamina * self.w/100, 5)
 	love.graphics.setColor(255, 255, 255, 255)
-	
+	end
 
 
   if (isDebugging) then self:drawDebug(dt) end
@@ -89,70 +94,50 @@ end
 
 function entity:update(dt)
 	-- animations ------------
-	self.state = "idle"
 	self.walk_anim:update(dt)
+	self.attack_anim:update(dt)
 
 	-- death condition --------
 	if (self.health <= 0) then
 		self.state = "dead"
-		self.dx, self.dy = 0, 0
+		table.remove(entities, self.index)
+		world:remove(self)
 	end
 
 	-- movement ----------------------------------------------------
 	-- ai --
-	if (self ~= player) and (self.state ~= "dead")then
-		if (self.demeanor == "enemy") then
-			self:followTarget(self.currentTarget)
+	if (self.state ~= "dead") then
+		if (self.demeanor == "hostile") then
+			self:doHostileAI()
 		elseif (self.demeanor == "friendly") then
 			self:doFriendlyAI()
-		else
-			self.dx = 0
-			self.dy = 0
 		end
-	-- player controls --
-	elseif (self == player) and (self.state ~= "dead") then
-		self.dx, self.dy = 0, 0
-		if love.keyboard.isDown('a') then self.dx = -self.speed; self.state = "walking" end
-		if love.keyboard.isDown('d') then self.dx = self.speed; self.state = "walking" end
-		if love.keyboard.isDown('w') then self.dy = -self.speed; self.state = "walking" end
-		if love.keyboard.isDown('s') then self.dy = self.speed; self.state = "walking" end
-		-- sprint --
-		if love.keyboard.isDown('lshift') and (self.stamina > 0) then 
-			self.speed = self.origSpeed + 200
-			self.stamina = self.stamina - 20 * love.timer.getDelta()
-		else
-			self.speed = self.origSpeed
-		end
+	elseif (self.state == "dead") then
+		self.dx = 0
+		self.dy = 0
 	end
 
 	-- regens --
-	if (self.health < 100) then self.health = self.health + 10 * love.timer.getDelta() end
-	if (self.stamina < 100) then self.stamina = self.stamina + 10 * love.timer.getDelta() end
+	if (self.health < 100) and (self.state ~= "dead") then self.health = self.health + 10 * love.timer.getDelta() end
+	if (self.stamina < 100) and (self.state ~= "dead") then self.stamina = self.stamina + 10 * love.timer.getDelta() end
 	
 
 
 	-- collision detection ------------------------------------------
-	local goalX, goalY = self.x + self.dx * dt, self.y + self.dy * dt
-	local actualX, actualY, cols, len = world:move(self, goalX, goalY)
-	self.x, self.y = actualX, actualY
+	if (self.state ~= "dead") then
+		local goalX, goalY = self.x + self.dx * dt, self.y + self.dy * dt
+		local actualX, actualY, cols, len = world:move(self, goalX, goalY)
+		self.x, self.y = actualX, actualY
 
-	for i=1,len do
-		print('collided with ' .. tostring(cols[i].other))
-		local other = cols[i].other
-			if (other.id == "wall") then -- check other.id
-
-	    elseif (other.id == "entity") then
-	    	if (self.demeanor == "enemy") and (other.demeanor ~= "enemy") then
-	    		self.state = "attacking"
-	      	other.health = other.health - self.damage * love.timer.getDelta()
-	    	elseif (self.demeanor == "friendly") and (other.demeanor == "enemy") then
-	    		self.currentTarget = other
-	      	other.health = other.health - 10 * love.timer.getDelta()
-	    	end
-
-	    end -- end check other.id
+		for i=1,len do
+			print('collided with ' .. tostring(cols[i].other))
+			local other = cols[i].other
+			
+			--[[if (self.demeanor == "hostile") and (other.demeanor ~= "hostile") then
+    	    	other.health = other.health - 20 * love.timer.getDelta()
+    	    end]]
+		end
 	end
-
 	self.ox, self.oy = self.x + self.hw, self.y + self.hh
 	
 end -----------------------------------------------------------------------------------------
@@ -161,19 +146,45 @@ end ----------------------------------------------------------------------------
 
 
 function entity:doFriendlyAI()
-	if (distanceBetween(self, self.currentTarget) > 200 ) then
-		if (self.stamina > 0) and (self.canRun) then
-			self.speed = self.origSpeed + 100
-			self.stamina = self.stamina - 40 * love.timer.getDelta()
-		else
-			if (self.stamina < 100) then self.canRun = false else self.canRun = true end
-			self.speed = self.origSpeed
-			self.stamina = self.stamina + 10 * love.timer.getDelta()
+	--[[self.state = "idle"
+	if (distanceBetween(self, self.currentTarget) > 100 ) then
+		if (distanceBetween(self, self.currentTarget) > 200) then
+			self.health = self.health - 50 * love.timer.getDelta()
 		end
 		self:followTarget(self.currentTarget)
 	else
 		self:stopMoving()
+	end]]
+end
+
+function entity:doHostileAI()
+	if (distanceBetween(self, self.currentTarget) > (self.hw + self.currentTarget.hw + 10) ) then
+		self.state = "moving"
+		if (distanceBetween(self, self.currentTarget) > (self.hw + self.currentTarget.hw + 200) ) then
+			if (self.stamina < 100) then
+				self.speed = self.origSpeed
+				self.stamina = self.stamina + 10 * love.timer.getDelta()
+			elseif (self.stamina > 0) then
+				self.speed = self.origSpeed + 60
+				self.stamina = self.stamina - 50 * love.timer.getDelta()
+			end
+		end
+	else 
+		self.state = "idle"
 	end
+
+	if (self.state == "idle") then
+		self:stopMoving()
+	elseif (self.state == "moving") then
+		self:followTarget(self.currentTarget)
+	end
+
+	-- attacking
+	if (distanceBetween(self, self.currentTarget) < (self.hw + self.currentTarget.hw + 30)) then
+		self.state = "attacking"
+		self.currentTarget.health = self.currentTarget.health - 50 * love.timer.getDelta()
+	end
+
 end
 
 function entity:stopMoving()
@@ -185,10 +196,10 @@ end
 
 
 function entity:followTarget(target)
-	if target.ox < self.ox then self.dx = -self.speed; self.state = "walking" end
-	if self.ox < target.ox then self.dx = self.speed; self.state = "walking" end
-	if self.oy > target.oy then self.dy = -self.speed; self.state = "walking" end
-	if target.oy > self.oy then self.dy = self.speed; self.state = "walking" end
+	if target.ox < self.ox then self.dx = -self.speed; self.state = "moving" end
+	if self.ox < target.ox then self.dx = self.speed; self.state = "moving" end
+	if self.oy > target.oy then self.dy = -self.speed; self.state = "moving" end
+	if target.oy > self.oy then self.dy = self.speed; self.state = "moving" end
 
 end
 
@@ -202,6 +213,7 @@ function entity:drawDebug(dt)
 		"hW, hH: "..self.hw..", "..self.hh,
 		"oX, oY: "..self.ox..","..self.oy,]]
 		"",
+		"demeanor: "..self.demeanor,
 		"HEALTH: "..self.health,
 		"SPEED: "..self.speed
 	}

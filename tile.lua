@@ -9,7 +9,7 @@ function tile:init(t, x, y)
 	self.x = x
 	self.y = y
 
-	self.scale = 4
+	self.scale = 1
 
 	self.w = self.img:getWidth()
 	self.h = self.img:getHeight()

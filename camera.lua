@@ -49,19 +49,11 @@ function camera:getFocusName()
 	if (self.focus == player) then return "player" end
 end
 
+function camera:mousePosition()
+  return love.mouse.getX() * self.scaleX + self.x, love.mouse.getY() * self.scaleY + self.y
+end
+
 function camera:update(dt)
-	--[[
-	if love.keyboard.isDown('w') then
-		camera:move( 0, -self.speed )
-	elseif love.keyboard.isDown('s') then
-		camera:move( 0, self.speed )
-	end
-	if love.keyboard.isDown('a') then
-		camera:move( -self.speed, 0 )
-	elseif love.keyboard.isDown('d') then
-		camera:move( self.speed, 0 )
-	end
-	]]
 	if love.keyboard.isDown('q') then
 		camera:scale(.999, .999)
 	elseif love.keyboard.isDown('e') then
