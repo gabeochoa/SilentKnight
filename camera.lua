@@ -1,6 +1,6 @@
 camera = {}
-camera.x = 0
-camera.y = 0
+camera.act_x = 0
+camera.act_y = 0
 camera.w, camera.h = love.graphics.getWidth(), love.graphics.getHeight()
 camera.scaleX = 1
 camera.scaleY = 1
@@ -54,18 +54,11 @@ function camera:mousePosition()
 end
 
 function camera:update(dt)
-	if love.keyboard.isDown('q') then
-		camera:scale(.999, .999)
-	elseif love.keyboard.isDown('e') then
-		camera:scale(1.001, 1.001)
-	end
-
-
-	camera.x = self.focus.x
-	camera.y = self.focus.y
+	camera.x = self.focus.act_x
+	camera.y = self.focus.act_y
 	if (self.focus ~= camera) then
-		camera.x = camera.x - love.window.getWidth()/2 + self.focus.hw
-		camera.y = camera.y - love.window.getHeight()/2 + self.focus.hh
+		camera.x = camera.x - love.window.getWidth()/2 + tile_size/2
+		camera.y = camera.y - love.window.getHeight()/2 + tile_size/2
 	end
 end
 
