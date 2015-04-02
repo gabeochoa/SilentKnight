@@ -27,14 +27,17 @@ function love.load()
     end
 
 	-- entities --
-	--require 'entities'
-	require 'player'
+
 	require 'entity'
 	require 'camera'
-	camera.focus = player
-
+	-- entities --
+	player = entity:new("snorlax",1,1) -- player
 	enemy1 = entity:new("snorlax",3,2)
-	entities = {enemy1}
+	
+
+	entities = {player, enemy1}
+
+	camera.focus = player
 
 	walltile = love.graphics.newImage("sprites/walltile.png")
 end
